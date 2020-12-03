@@ -1,6 +1,6 @@
 # Java bigdecimal class的四种陷阱
 
-[原文](https://blogs.oracle.com/javamagazine/12-recipes-for-using-the-optional-class-as-its-meant-to-be-used)
+[原文](https://blogs.oracle.com/javamagazine/four-common-pitfalls-of-the-bigdecimal-class-and-how-to-avoid-them)
 
 ##  Pitfall #1: double类型构造方法
 
@@ -102,9 +102,43 @@ System.out.println("scale=" + x.scale());
 
 该方法并没有将小数部分四舍五入，而是将值（ unscaled value ）四舍五入到给定的有效数字数(从左到右计算)，和小数点保持不变， 而且scale 的值是-3。
 
-所有发生了什么？
+所以发生了什么？
 
+请看下面的输出，
 
+```java
+BigDecimal x = new BigDecimal("12345.6789");
+System.out.println("x.unscaledValue="+x.unscaledValue());
+//=> x.unscaledValue=123456789
+x = x.round(new MathContext(2, RoundingMode.HALF_UP));
+System.out.println("x ="+x);
+//=> x =1.2E+4
+System.out.println("x.toPlainString=" + x.toPlainString());
+//=> x.toPlainString=12000
+System.out.println("x.scale=" + x.scale());
+//=> x.scale=-3
+System.out.println("x.unscaledValue="+x.unscaledValue());
+//=> x.unscaledValue=12
+```
+
+其`unscaledValue`转换成为有效位数为2（123456789 =》 12），由于小数点是没有左移， BigDecimal真正的值应该是 12000.0000 。之所以变成12000是因为小数点后面四个0是没有意义的。
+
+为什么12000的scale是-3而不是0呢？
+
+BigDecimal的值等于 unscaledValue ^ 10-scale。在上面的代码中可以发现，在执行round之后，`unscaledValue`的值变成12，而12*10^3  == 12000。
+
+此外，在上面代码中直接打印x是科学计数法。
+
+ 要获得预期的12345.68结果， 使用`setScale(scale, roundingMode)` `setScale(scale, roundingMode)` method, for example: 
+
+```java
+BigDecimal x = new BigDecimal("12345.6789");
+x = x.setScale(2, RoundingMode.HALF_UP);
+System.out.println("x=" + x));
+//=> x=12345.68
+```
+
+ setScale(scale, roundingMode)方法根据指定的舍入模式将分数部分舍入小数点后两位。 
 
 
 
